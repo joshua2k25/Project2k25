@@ -70,34 +70,84 @@
   .chat-input{ display:flex; gap:6px; padding:10px; border-top:1px solid #eee; }
   .chat-input input{ flex:1; padding:8px 10px; border-radius:10px; border:1px solid #ddd; }
   .chat-input button{ border:0; background:var(--accent); color:#fff; border-radius:10px; padding:8px 12px; cursor:pointer; }
+
+  /* slide-away behavior */
+.sidebar {
+  position: relative;
+  transition: transform 0.3s ease;
+}
+.sidebar.hidden {
+  transform: translateX(-100%);
+}
+
+/* small circular close button on the LEFT edge of the sidebar */
+.toggle-btn {
+  position: absolute;
+  top: 12px;
+  left: 5px;              /* sits slightly outside the sidebar's left edge */
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: #ffffff;
+  color: #0b6f4e;
+  font-weight: 700;
+  line-height: 28px;
+  text-align: center;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,.2);
+  z-index: 3;
+}
+
+/* tiny floating button to reopen sidebar when hidden */
+.reopen-btn {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  width: 32px;
+  height: 32px;
+  display: none;            /* only show when sidebar is hidden */
+  place-items: center;
+  border: none;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,.25);
+  z-index: 3;               /* above the map */
+  font-size: 18px;
+}
 </style>
 </head>
 <body>
 
-  <aside class="sidebar">
-    <div class="banner" title="School banner">
-      <div class="search">
-        <input id="search" placeholder="Search by Name, Keyword, etc." />
-      </div>
+<aside class="sidebar">
+  <button class="toggle-btn" id="toggleSidebar">×</button>
+  <div class="banner" title="School banner">
+    <div class="search">
+      <input id="search" placeholder="Search by Name, Keyword, etc." />
     </div>
+  </div>
 
-    <div class="group">
-      <div class="title">Menu</div>
-      <div class="cat">
-        <button id="catToggle">Buildings by Categories ▾</button>
-        <div class="subcats" id="subcats">
-          <button data-cat="all">All</button>
-          <button data-cat="academic">Academic Buildings</button>
-          <button data-cat="administrative">Administrative Offices</button>
-          <button data-cat="labs">Laboratories</button>
-          <button data-cat="dorms">Dormitories</button>
-          <button data-cat="sports">Sports / Event Facilities</button>
-          <button data-cat="services">Services</button>
-        </div>
-        <button class="gallery-btn" id="openGallery">📸 Photo & Media Gallery</button>
+  <div class="group">
+    <div class="title">Menu</div>
+    <div class="cat">
+      <button id="catToggle">Buildings by Categories ▾</button>
+      <div class="subcats" id="subcats">
+        <button data-cat="all">All</button>
+        <button data-cat="academic">Academic Buildings</button>
+        <button data-cat="administrative">Administrative Offices</button>
+        <button data-cat="labs">Laboratories</button>
+        <button data-cat="dorms">Dormitories</button>
+        <button data-cat="sports">Sports / Event Facilities</button>
+        <button data-cat="services">Services</button>
       </div>
+      <button class="gallery-btn" id="openGallery">📸 Photo & Media Gallery</button>
     </div>
-  </aside>
+  </div>
+</aside>
+<button class="reopen-btn" id="openSidebar" aria-label="Open sidebar">☰</button>
+
 
   <div id="map" style="height:100vh; width:100%;"></div>
 
@@ -113,7 +163,6 @@
     <button onclick="map.zoomIn()">+</button>
     <button onclick="map.zoomOut()">−</button>
   </div>
-
 
   <div class="chat-btn" id="chatBtn">💬</div>
   <div class="chat-box" id="chatBox">
@@ -201,6 +250,20 @@ function sendChat(){
         labelLayerId
       );
     });
+
+    const sidebar = document.querySelector(".sidebar");
+const toggleBtn = document.getElementById("toggleSidebar");
+const openBtn = document.getElementById("openSidebar");
+
+toggleBtn.addEventListener("click", () => {
+  sidebar.classList.add("hidden");
+  openBtn.style.display = "grid";
+});
+
+openBtn.addEventListener("click", () => {
+  sidebar.classList.remove("hidden");
+  openBtn.style.display = "none";
+});
 </script>
 </body>
 </html>
