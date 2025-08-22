@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+<link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
+
+<title>La Salle University – Interactive Campus Guide</title>
+
+<style>
+  body { margin:0; padding:0; }
+  #map { position:absolute; top:0; bottom:0; width:100%; }
+
+  :root { --sidebar-w: 320px; --accent:#0b6f4e; --bg:#0c2b20; --text:#fff; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin:0; font-family: system-ui, Arial, sans-serif; display:flex; background:#f3f5f4; overflow:hidden; }
+
+  .sidebar {
+    width: var(--sidebar-w);
+    background: var(--bg);
+    color: var(--text);
+    display:flex; flex-direction:column;
+    border-right: 1px solid rgba(255,255,255,.08);
+    z-index: 2; 
+  }
+
+  .banner {
+    width:100%; height:160px;
+    position:relative;
+    background:#113b2d url('School.jpg') center/cover no-repeat;
+    display:flex; align-items:flex-end; padding:12px;
+  }
+
+  .search { width:100%; }
+  .search input{
+    width:100%; padding:10px 12px;
+    border:0; border-radius:10px;
+    outline:none; font-size:14px;
+  }
+
+  .group { padding:10px 12px; }
+  .title { font-size:14px; letter-spacing:.2px; opacity:.85; margin:8px 0 6px; }
+  .cat { display:flex; flex-direction:column; gap:8px; }
+  .cat button{
+    text-align:left; border:0; border-radius:12px; padding:10px 12px; font-size:14px;
+    background:rgba(255,255,255,.08); color:#fff; cursor:pointer;
+  }
+  .cat button:hover{ background:rgba(255,255,255,.16); }
+  .gallery-btn{ margin-top:8px; background:#094b36 !important; }
+
+  .subcats { display:none; flex-direction:column; gap:6px; margin-left:10px; margin-top:6px; }
+  .subcats button { background:rgba(255,255,255,.06); font-size:13px; padding:8px 12px; }
+
+  .card{ position:absolute; right:16px; top:16px; width:320px; max-width:calc(100% - 32px); background:#fff; border-radius:14px; box-shadow:0 10px 30px rgba(0,0,0,.15); overflow:hidden; display:none; z-index:2; }
+  .card img{ width:100%; height:160px; object-fit:cover; display:block; }
+  .card .pad{ padding:12px 14px; }
+  .card h3{ margin:0 0 6px; font-size:18px; }
+  .card p{ margin:0; color:#444; font-size:14px; line-height:1.35; }
+
+  .controls{ position:absolute; right:16px; bottom:16px; display:flex; flex-direction:column; gap:8px; z-index:2; }
+  .controls button{ width:44px; height:44px; border-radius:12px; border:0; font-size:20px; cursor:pointer; box-shadow:0 6px 18px rgba(0,0,0,.18); background:#fff; }
+
+  .chat-btn{ position:absolute; left:16px; bottom:16px; width:56px; height:56px; border-radius:50%; display:grid; place-items:center; background:var(--accent); color:#fff; cursor:pointer; box-shadow:0 8px 22px rgba(0,0,0,.25); z-index:2; }
+  .chat-box{ position:absolute; left:16px; bottom:84px; width:300px; height:360px; background:#fff; border-radius:14px; box-shadow:0 12px 30px rgba(0,0,0,.22); display:none; overflow:hidden; z-index:2; }
+  .chat-head{ background:var(--accent); color:#fff; padding:10px 12px; font-weight:600; }
+  .chat-body{ height: calc(100% - 94px); overflow:auto; padding:10px 12px; font-size:14px; }
+  .chat-input{ display:flex; gap:6px; padding:10px; border-top:1px solid #eee; }
+  .chat-input input{ flex:1; padding:8px 10px; border-radius:10px; border:1px solid #ddd; }
+  .chat-input button{ border:0; background:var(--accent); color:#fff; border-radius:10px; padding:8px 12px; cursor:pointer; }
+</style>
+</head>
+<body>
+
+  <aside class="sidebar">
+    <div class="banner" title="School banner">
+      <div class="search">
+        <input id="search" placeholder="Search by Name, Keyword, etc." />
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="title">Menu</div>
+      <div class="cat">
+        <button id="catToggle">Buildings by Categories ▾</button>
+        <div class="subcats" id="subcats">
+          <button data-cat="all">All</button>
+          <button data-cat="academic">Academic Buildings</button>
+          <button data-cat="administrative">Administrative Offices</button>
+          <button data-cat="labs">Laboratories</button>
+          <button data-cat="dorms">Dormitories</button>
+          <button data-cat="sports">Sports / Event Facilities</button>
+          <button data-cat="services">Services</button>
+        </div>
+        <button class="gallery-btn" id="openGallery">📸 Photo & Media Gallery</button>
+      </div>
+    </div>
+  </aside>
+
+  <div id="map" style="height:100vh; width:100%;"></div>
+
+  <div class="card" id="infoCard">
+    <img src="" alt="Building" id="cardImg" />
+    <div class="pad">
+      <h3 id="cardTitle"></h3>
+      <p id="cardDesc"></p>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button onclick="map.zoomIn()">+</button>
+    <button onclick="map.zoomOut()">−</button>
+  </div>
+
+
+  <div class="chat-btn" id="chatBtn">💬</div>
+  <div class="chat-box" id="chatBox">
+    <div class="chat-head">AI Assistant</div>
+    <div class="chat-body" id="chatBody">Hello! How can I help you explore the campus?</div>
+    <div class="chat-input">
+      <input id="chatInput" placeholder="Type a message..." />
+      <button onclick="sendChat()">Send</button>
+    </div>
+  </div>
+
+<script>
+catToggle.onclick = ()=> {
+  subcats.style.display = subcats.style.display === 'flex' ? 'none' : 'flex';
+};
+
+function showCard(title,img,desc){
+  document.getElementById('infoCard').style.display='block';
+  document.getElementById('cardTitle').innerText=title;
+  document.getElementById('cardImg').src=img;
+  document.getElementById('cardDesc').innerText=desc;
+}
+
+const chatBtn=document.getElementById('chatBtn');
+const chatBox=document.getElementById('chatBox');
+chatBtn.onclick=()=>{ chatBox.style.display= chatBox.style.display==='block' ? 'none':'block'; };
+
+function sendChat(){
+  const input=document.getElementById('chatInput');
+  const body=document.getElementById('chatBody');
+  if(input.value.trim()!==''){
+    body.innerHTML+=`<div><b>You:</b> ${input.value}</div>`;
+    input.value='';
+    body.scrollTop=body.scrollHeight;
+  }
+}
+
+    mapboxgl.accessToken = 'pk.eyJ1Ijoiam9zaHRhbjJrMDMiLCJhIjoiY21lazc5bmxlMDJyYTJscXZzMnZlcXV6YyJ9.uyF2wIya3o59CHzeG32KEw';
+
+    const map = new mapboxgl.Map({
+      container: 'map',
+      style: 'mapbox://styles/mapbox/streets-v11',
+      center: [123.846034, 8.148519], 
+      zoom: 18.5, 
+      pitch: 60,  
+      bearing: -17.6 
+    });
+
+    map.addControl(new mapboxgl.NavigationControl());
+
+    new mapboxgl.Marker({ color: "green" })
+      .setLngLat([123.846034, 8.148519])
+      .setPopup(new mapboxgl.Popup().setText("La Salle University, Ozamiz"))
+      .addTo(map);
+
+    map.on('load', () => {
+      const layers = map.getStyle().layers;
+      let labelLayerId;
+      for (let i = 0; i < layers.length; i++) {
+        if (layers[i].type === 'symbol' && layers[i].layout['text-field']) {
+          labelLayerId = layers[i].id;
+          break;
+        }
+      }
+
+      map.addLayer(
+        {
+          'id': 'add-3d-buildings',
+          'source': 'composite',
+          'source-layer': 'building',
+          'filter': ['==', 'extrude', 'true'],
+          'type': 'fill-extrusion',
+          'minzoom': 15,
+          'paint': {
+            'fill-extrusion-color': '#aaa',
+            'fill-extrusion-height': [
+              'interpolate', ['linear'], ['zoom'],
+              15, 0,
+              15.05, ['get', 'height']
+            ],
+            'fill-extrusion-base': ['get', 'min_height'],
+            'fill-extrusion-opacity': 0.6
+          }
+        },
+        labelLayerId
+      );
+    });
+</script>
+</body>
+</html>
